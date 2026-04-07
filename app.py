@@ -9,10 +9,10 @@ with st.sidebar:
     st.markdown("## ⚙️ Settings")
     lang_choice = st.selectbox("Language / Langue", ["English", "Français"])
     
-    # Sélection de la monnaie avec taux de conversion (Base 1 USD)
+    # Correction : Utilisation de "EUR" au lieu du symbole direct pour éviter les bugs d'encodage PDF
     currencies = {
         "USD ($)": {"rate": 1.0, "sym": "$"},
-        "EUR (€)": {"rate": 0.92, "sym": "€"},
+        "EUR (€)": {"rate": 0.92, "sym": "EUR"}, 
         "FCFA (CFA)": {"rate": 605.0, "sym": "FCFA"},
         "MAD (DH)": {"rate": 10.0, "sym": "DH"}
     }
@@ -99,7 +99,9 @@ def generate_pro_pdf(country, energy, result, plan, sym, lang, org_name="", ent_
     
     # 3. DÉTAILS
     pdf.set_font("Arial", 'B', 12); pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 10, f"Plan: {plan} ({final_price:,.0f} {sym})", ln=True)
+    # Remplacement du symbole par "EUR" si c'est de l'euro pour éviter le bug d'encodage
+    display_sym = "EUR" if sym == "€" else sym
+    pdf.cell(0, 10, f"Plan: {plan} ({final_price:,.0f} {display_sym})", ln=True)
     pdf.set_font("Arial", '', 11)
     pdf.cell(0, 8, f"Region: {country} | Energy: {energy:,} kWh", ln=True); pdf.ln(5)
     
@@ -124,7 +126,8 @@ def generate_pro_pdf(country, energy, result, plan, sym, lang, org_name="", ent_
     pdf.line(10, pdf.get_y()+10, 80, pdf.get_y()+10)
     pdf.line(110, pdf.get_y()+10, 190, pdf.get_y()+10)
 
-    return pdf.output(dest='S').encode('latin-1')
+    # Utilisation de 'cp1252' qui est plus robuste que 'latin-1' pour les PDF
+    return pdf.output(dest='S').encode('cp1252', 'replace')
 
 # --- INTERFACE ---
 st.markdown(f"<h1>🚀 {t['titre_h1']}</h1>", unsafe_allow_html=True)
@@ -152,7 +155,6 @@ with col2:
             st.write("---")
             plan = st.radio(t["select_plan"], ["Business ($500)", "Enterprise ($1000)"])
             
-            # Calcul du prix converti
             base_price = 500 if "500" in plan else 1000
             final_price = base_price * taux
             
@@ -163,7 +165,7 @@ with col2:
             else:
                 st.info(t["biz_info"])
 
-            # Affichage du prix dynamique
+            # Affichage sur le site (ici l'encodage HTML gère très bien le symbole €)
             st.markdown(f"""<div class="premium-box"><h2 style="color:white; margin:0;">{final_price:,.0f} {sym}</h2></div>""", unsafe_allow_html=True)
             
             pdf_pro = generate_pro_pdf(country, energy, resultat, plan, sym, lang_choice, org_name, ent_name, final_price)
