@@ -4,22 +4,12 @@ from fpdf import FPDF
 # --- CONFIGURATION ---
 st.set_page_config(page_title="Carbon-Pulse Pro", layout="wide")
 
-# --- SYSTÈME DE TRADUCTION ET CONVERSION ---
+# --- SYSTÈME DE TRADUCTION ---
 with st.sidebar:
     st.markdown("## ⚙️ Settings")
     lang_choice = st.selectbox("Language / Langue", ["English", "Français"])
-    
-    # Sélection de la monnaie avec taux de conversion (Base 1 USD)
-    currencies = {
-        "USD ($)": {"rate": 1.0, "sym": "$"},
-        "EUR (€)": {"rate": 0.92, "sym": "€"},
-        "FCFA (CFA)": {"rate": 605.0, "sym": "FCFA"},
-        "MAD (DH)": {"rate": 10.0, "sym": "DH"}
-    }
-    
-    monnaie_choice = st.selectbox("Currency / Monnaie", list(currencies.keys()))
-    taux = currencies[monnaie_choice]["rate"]
-    sym = currencies[monnaie_choice]["sym"]
+    monnaie = st.selectbox("Currency / Monnaie", ["USD ($)", "EUR (€)", "MAD (DH)"])
+    sym = monnaie.split("(")[1].replace(")", "")
 
 dic = {
     "English": {
@@ -77,31 +67,39 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- GÉNÉRATEUR PDF ---
-def generate_pro_pdf(country, energy, result, plan, sym, lang, org_name="", ent_name="", final_price=0):
+def generate_pro_pdf(country, energy, result, plan, sym, lang, org_name="", ent_name=""):
     pdf = FPDF()
     pdf.add_page()
     texts = dic[lang]
 
     # 1. EN-TÊTE DYNAMIQUE
-    pdf.set_font("Arial", 'B', 20); pdf.set_text_color(30, 58, 138)
+    pdf.set_font("Arial", 'B', 20)
+    pdf.set_text_color(30, 58, 138)
+    
     if "1000" in plan and ent_name:
         pdf.cell(0, 15, ent_name.upper(), ln=True, align='C')
     else:
         pdf.cell(0, 15, texts["pdf_header_gen"], ln=True, align='C')
-    pdf.set_draw_color(30, 58, 138); pdf.line(10, 30, 200, 30)
+        
+    pdf.set_draw_color(30, 58, 138)
+    pdf.line(10, 30, 200, 30)
     
-    # 2. SOURCE (Uniquement Business)
+    # 2. SOURCE BIEN VISIBLE (Uniquement 500$)
     if "500" in plan:
-        pdf.ln(2); pdf.set_font("Arial", 'B', 11); pdf.set_text_color(200, 0, 0)
-        pdf.cell(0, 10, texts["source_text"], ln=True, align='C'); pdf.ln(5)
+        pdf.ln(2)
+        pdf.set_font("Arial", 'B', 11)
+        pdf.set_text_color(220, 50, 50) # Rouge discret pour visibilité
+        pdf.cell(0, 10, texts["source_text"], ln=True, align='C')
+        pdf.ln(5)
     else:
         pdf.ln(10)
     
     # 3. DÉTAILS
     pdf.set_font("Arial", 'B', 12); pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 10, f"Plan: {plan} ({final_price:,.0f} {sym})", ln=True)
+    pdf.cell(0, 10, f"Plan: {plan}", ln=True)
     pdf.set_font("Arial", '', 11)
-    pdf.cell(0, 8, f"Region: {country} | Energy: {energy:,} kWh", ln=True); pdf.ln(5)
+    pdf.cell(0, 8, f"Region: {country} | Energy: {energy:,} kWh", ln=True)
+    pdf.ln(5)
     
     # 4. RÉSULTAT
     pdf.set_fill_color(248, 250, 252); pdf.set_font("Arial", 'B', 14)
@@ -109,7 +107,7 @@ def generate_pro_pdf(country, energy, result, plan, sym, lang, org_name="", ent_
     pdf.set_font("Arial", 'B', 24); pdf.set_text_color(16, 185, 129)
     pdf.cell(0, 20, f"{result:,.2f} Tonnes CO2e", ln=True, align='C')
     
-    # 5. CONSEILS IA (1000$)
+    # 5. CONSEILS IA (UNIQUEMENT 1000$)
     if "1000" in plan:
         pdf.ln(5); pdf.set_font("Arial", 'B', 12); pdf.set_text_color(30, 58, 138)
         pdf.cell(0, 10, texts["ai_title"], ln=True)
@@ -117,7 +115,7 @@ def generate_pro_pdf(country, energy, result, plan, sym, lang, org_name="", ent_
         reco = f"Strategic Analysis for {org_name if org_name else country}: Optimization plan included."
         pdf.multi_cell(0, 8, reco)
 
-    # 6. SIGNATURES
+    # 6. SIGNATURES (Organisation)
     pdf.ln(30); pdf.set_font("Arial", 'B', 10); pdf.set_text_color(0, 0, 0)
     pdf.cell(95, 10, texts["pdf_expert"], ln=0)
     pdf.cell(95, 10, f"{org_name if org_name else 'Organization'}", ln=1)
@@ -136,7 +134,7 @@ col1, col2 = st.columns([1.2, 1], gap="large")
 with col1:
     st.markdown(f"### 📥 {t['data_entry']}")
     energy = st.number_input(t["energy_label"], min_value=0, value=120000)
-    country = st.selectbox(t["country_label"], ["USA", "France", "Morocco", "Gabon", "Senegal", "Ivory Coast"])
+    country = st.selectbox(t["country_label"], ["USA", "France", "Morocco", "Gabon", "Senegal", "China"])
     resultat = (energy * 0.45) / 1000
 
     if st.button(t["btn_audit"]):
@@ -152,24 +150,21 @@ with col2:
             st.write("---")
             plan = st.radio(t["select_plan"], ["Business ($500)", "Enterprise ($1000)"])
             
-            # Calcul du prix converti
-            base_price = 500 if "500" in plan else 1000
-            final_price = base_price * taux
-            
-            org_name = st.text_input(t["org_label"], placeholder="Organization name...")
+            # LOGIQUE DES CHAMPS
+            org_name = st.text_input(t["org_label"], placeholder="Client name...")
             ent_name = ""
             if "1000" in plan:
-                ent_name = st.text_input(t["company_label"], placeholder="Header name...")
+                ent_name = st.text_input(t["company_label"], placeholder="Enterprise name for header...")
             else:
                 st.info(t["biz_info"])
 
-            # Affichage du prix dynamique
-            st.markdown(f"""<div class="premium-box"><h2 style="color:white; margin:0;">{final_price:,.0f} {sym}</h2></div>""", unsafe_allow_html=True)
+            prix = "500" if "500" in plan else "1000"
+            st.markdown(f"""<div class="premium-box"><h2 style="color:white; margin:0;">{prix}.00 {sym}</h2></div>""", unsafe_allow_html=True)
             
-            pdf_pro = generate_pro_pdf(country, energy, resultat, plan, sym, lang_choice, org_name, ent_name, final_price)
+            pdf_pro = generate_pro_pdf(country, energy, resultat, plan, sym, lang_choice, org_name, ent_name)
             st.download_button(
-                label=f"{t['pay_btn']} ({final_price:,.0f} {sym})",
+                label=f"{t['pay_btn']} ({prix} {sym})",
                 data=pdf_pro,
-                file_name=f"Audit_{base_price}.pdf",
+                file_name=f"Audit_{prix}.pdf",
                 mime="application/pdf"
             )
