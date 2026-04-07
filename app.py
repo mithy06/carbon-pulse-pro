@@ -35,7 +35,7 @@ st.markdown("<h1 style='text-align: center; color: #1e3a8a;'>Carbon-Pulse Pro</h
 col1, col2 = st.columns([1, 1])
 
 with col1:
-    st.subheader("📊 Calculateur")
+    st.subheader(" Calculateur")
     energie = st.number_input("Consommation (kWh)", min_value=1, value=120000)
     pays = st.selectbox("Pays", ["Maroc", "Gabon", "Senegal", "France"])
     
@@ -46,14 +46,14 @@ with col1:
         st.markdown(f"<div class='res-card'><h2>{score:.2f} tCO2e</h2><p>Audit Termine</p></div>", unsafe_allow_html=True)
 
 with col2:
-    st.subheader("💎 Rapport Premium")
+    st.subheader(" Rapport Premium")
     st.write("Prix : 500.00 USD")
     
     # CE BOUTON GENERE ET TELECHARGE DIRECTEMENT
     pdf_final = generer_pdf(pays, energie, score)
     
     st.download_button(
-        label="📥 TELECHARGER LE RAPPORT (PDF)",
+        label=" TELECHARGER LE RAPPORT (PDF)",
         data=pdf_final,
         file_name=f"Audit_{pays}.pdf",
         mime="application/pdf"
