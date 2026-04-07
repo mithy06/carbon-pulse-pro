@@ -130,7 +130,7 @@ def generate_pro_pdf(country, energy, result, plan, sym, lang, org_name="", ent_
     return pdf.output(dest='S').encode('cp1252', 'replace')
 
 # --- INTERFACE ---
-st.markdown(f"<h1>🚀 {t['titre_h1']}</h1>", unsafe_allow_html=True)
+st.markdown(f"<h1> {t['titre_h1']}</h1>", unsafe_allow_html=True)
 
 if 'calculated' not in st.session_state: st.session_state.calculated = False
 
